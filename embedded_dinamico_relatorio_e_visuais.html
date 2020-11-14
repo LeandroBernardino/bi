@@ -1,0 +1,220 @@
+<html>
+    <head>
+        <script src="https://microsoft.github.io/PowerBI-JavaScript/demo/node_modules/jquery/dist/jquery.js"></script>
+        <script src="https://microsoft.github.io/PowerBI-JavaScript/demo/node_modules/powerbi-client/dist/powerbi.js"></script>
+        <body>
+            <div>
+            Workspaces:
+            <select id="lista_de_workspaces"></select>
+            <div>Workspace id:</div>
+            <div id="workspace_selecionado"></div>
+            <p></p>
+            Relatórios:
+            <select id="lista_de_relatorios" title="teste-xpto"></select>
+            <div>Report id:</div>
+            <div id="relatorio_selecionado"></div>
+            <div>Dataset id:</div>
+            <div id="conjunto_de_dados_selecionado"></div>
+            <p></p>
+            <div>Embed Url:</div>
+            <div id="url_relatorio_embed"></div>
+            <p></p>
+            <p></p>
+            <div>Embed Token:</div>
+            <div id="token_embed"></div>
+            <p></p>
+            Container do Relatório:
+            <div id="container_relatorio"></div>
+            <p></p>
+            Páginas:
+            <select id="lista_de_paginas"></select>
+            <div>Page Name:</div>
+            <div id="pagina_selecionado"></div>
+            <p></p>
+            Visuais:
+            <select id="lista_de_visuais"></select>
+            <div>Visual Name:</div>
+            <div id="visual_selecionado"></div>
+            <p></p>
+            Container do Visual:
+            <div id="container_visual"></div>
+            
+            <script> //CRIA CONSTANTES
+                const url_api_powerbi = "https://api.powerbi.com/v1.0/myorg/";
+                const url_proxy = "https://cors-anywhere.herokuapp.com/";
+                const url_bearer = "https://login.microsoftonline.com/common/oauth2/token/";
+                const requisicao_bearer =
+                fetch(url_proxy + url_bearer, {
+                method: 'post',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: 'grant_type=Password&resource=https://analysis.windows.net/powerbi/api&client_id=006935b5-3d66-42a9-9aa9-983868020cf9&client_secret=IT75V9i~1FT-VHXDT97JUObdB_hL-B~xk_&username=bi@buonny.com.br&password=@buonny20'
+                })
+                .then(
+                function(resposta_bearer) {
+                return resposta_bearer.json()
+                })
+                const seletor_workspace = document.querySelector('#lista_de_workspaces');
+                const seletor_relatorio = document.querySelector('#lista_de_relatorios');
+                const seletor_pagina = document.querySelector('#lista_de_paginas');
+                const seletor_visual = document.querySelector('#lista_de_visuais');
+            </script>
+            
+            <script> //CRIA LISTA DE WORKSPACES
+                requisicao_bearer
+                .then(
+                function(json_bearer) {
+                var token_bearer = json_bearer["access_token"];
+                fetch(url_proxy + url_api_powerbi + 'groups', {
+                method: 'get',
+                headers: {'Authorization': 'Bearer ' + token_bearer}
+                }).then(
+                function(resposta_api_rest) {
+                return resposta_api_rest.json()
+                }).then(
+                function(json_api_rest) {
+                html = "";
+                obj = json_api_rest.value
+                for(var key in obj) {html += "<option value=" + obj[key].id  + ">" + obj[key].name + "</option>"}
+                document.getElementById("lista_de_workspaces").innerHTML = html
+                })
+                })
+            </script>
+
+            <script> //GRAVA WORKSPACE SELECIONADO E CRIA LISTA DE RELATORIOS
+                seletor_workspace.addEventListener('change', (event) => {
+                workspace_selecionado = `${event.target.value}`
+                document.querySelector('#workspace_selecionado').textContent = workspace_selecionado;
+                requisicao_bearer
+                .then(
+                function(json_bearer) {
+                var token_bearer = json_bearer["access_token"];
+                fetch(url_proxy + url_api_powerbi + 'groups/' + workspace_selecionado + '/reports', {
+                method: 'get',
+                headers: {'Authorization': 'Bearer ' + token_bearer}
+                }).then(
+                function(resposta_api_rest) {
+                return resposta_api_rest.json()
+                }).then(
+                function(json_api_rest) {
+                html = "";
+                obj = json_api_rest.value
+                for(var key in obj) {html += "<option value=" + obj[key].id  + " title=" + obj[key].datasetId + " label=" + obj[key].embedUrl + ">" + obj[key].name + "</option>"}
+                document.getElementById("lista_de_relatorios").innerHTML = html
+                })
+                })
+                })
+            </script>
+
+            <script> //EMBEDAR RELATORIO, LISTAR PAGINAS, LISTAR VISUAIS E EMBEDAR VISUAL
+                seletor_relatorio.addEventListener('change', (event) => {
+                indice = seletor_relatorio.selectedIndex;
+                relatorio_selecionado = `${event.target.value}`;
+                conjunto_de_dados_selecionado = seletor_relatorio.options[indice].title;
+                url_relatorio_embed = seletor_relatorio.options[indice].label;
+                document.querySelector('#relatorio_selecionado').textContent = relatorio_selecionado;
+                document.querySelector('#conjunto_de_dados_selecionado').textContent = conjunto_de_dados_selecionado;
+                document.querySelector('#url_relatorio_embed').textContent = url_relatorio_embed
+                
+                requisicao_bearer //LISTAR PAGINAS
+                .then(
+                function(json_bearer) {
+                var token_bearer = json_bearer["access_token"];
+                fetch(url_proxy + url_api_powerbi + 'groups/' + workspace_selecionado + "/reports/" +  relatorio_selecionado + '/pages', {
+                method: 'get',
+                headers: {'Authorization': 'Bearer ' + token_bearer}
+                }).then(
+                function(resposta_api_rest) {
+                return resposta_api_rest.json()
+                }).then(
+                function(json_api_rest) {
+                html = "";
+                obj = json_api_rest.value
+                for(var key in obj) {html += "<option value=" + obj[key].Name  + ">" + obj[key].displayName + "</option>"}
+                document.getElementById("lista_de_paginas").innerHTML = html
+                })
+                });
+                
+                requisicao_bearer //TOKEN EMBED
+                .then(
+                function(json_bearer) {
+                var token_bearer = json_bearer["access_token"];
+                body_json = '{"datasets": [{"id": "'+ conjunto_de_dados_selecionado +'"}],"reports": [{"id": "'+ relatorio_selecionado +'"}]}';
+                fetch(url_proxy + url_api_powerbi + 'GenerateToken', {
+                method: 'post',
+                headers: {'Authorization': 'Bearer ' + token_bearer, 'Content-type': 'application/json'},
+                body: body_json
+                }).then(
+                function(resposta_api_rest) {
+                return resposta_api_rest.json()
+                }).then(
+                function(json_api_rest) {
+                token_embed = json_api_rest["token"];
+                document.querySelector('#token_embed').textContent = token_embed;
+                console.log('parametros para embedar: ')
+                console.log('token embed: ' + token_embed);
+                console.log('url embed: ' + url_relatorio_embed);
+                console.log('report id: ' + relatorio_selecionado);
+
+                    // EMBEDAR RELATORIO 
+                    var models = window['powerbi-client'].models;
+                    var config_relatorio = {
+                    type: 'report',
+                    tokenType: models.TokenType.Embed,
+                    accessToken: token_embed,
+                    embedUrl: url_relatorio_embed,
+                    id: relatorio_selecionado,
+                    settings: {
+                    panes: {
+                    filters: {visible: true},
+                    pageNavigation: {visible: true}
+                    }
+                    }
+                    };
+                    var embedContainer_relatorio = $('#container_relatorio')[0];
+                    var report = powerbi.embed(embedContainer_relatorio, config_relatorio);
+
+                    // LISTAR VISUAIS
+                    seletor_pagina.addEventListener('change', (event) => {
+                    pagina_selecionado = `${event.target.value}`
+                    document.querySelector('#pagina_selecionado').textContent = pagina_selecionado;
+                    console.log('A página selecionada é: ' + pagina_selecionado);
+                    var objeto_pagina_selecionada = report.page(pagina_selecionado);
+                    objeto_pagina_selecionada.getVisuals()
+                    .then(
+                    function (visuais_do_objeto_pagina) {
+                    console.log('Abaixo o array de visuais da página selecionada: ');
+                    console.log(visuais_do_objeto_pagina);
+                    html = "";
+                    obj = visuais_do_objeto_pagina
+                    for(var key in obj) {html += "<option value=" + obj[key].name  + ">" + obj[key].title + "</option>"}
+                    document.getElementById("lista_de_visuais").innerHTML = html
+                    xpto = 123;
+                    });
+
+                        // GRAVAR VISUAL SELECIONADO E EMBEDAR VISUAL
+                        seletor_visual.addEventListener('change', (event) => {
+                        visual_selecionado = `${event.target.value}`
+                        document.querySelector('#visual_selecionado').textContent = visual_selecionado;
+                        console.log('o visual selecionado é Visual Name: ' + visual_selecionado);
+                        // EMBEDAR VISUAL 
+                        var config_visual = {
+                        type: 'visual',
+                        tokenType: models.TokenType.Embed,
+                        accessToken: token_embed,
+                        embedUrl: url_relatorio_embed,
+                        id: relatorio_selecionado,
+                        pageName: pagina_selecionado,
+                        visualName: visual_selecionado
+                        };
+                        var embedContainer_visual = $('#container_visual')[0];
+                        var visual = powerbi.embed(embedContainer_visual, config_visual);
+                        });
+                    })
+                });
+                })
+                })
+            </script>
+            </div> 
+        </body>
+    </head>
+</html>
